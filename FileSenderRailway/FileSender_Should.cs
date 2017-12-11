@@ -14,7 +14,6 @@ namespace FileSenderRailway
 	[UseReporter(typeof(DiffReporter))]
 	public class FileSender_Should
 	{
-		private FileSender fileSender;
 		private ICryptographer cryptographer;
 		private ISender sender;
 		private IRecognizer recognizer;
@@ -29,7 +28,6 @@ namespace FileSenderRailway
 			cryptographer = A.Fake<ICryptographer>();
 			sender = A.Fake<ISender>();
 			recognizer = A.Fake<IRecognizer>();
-			fileSender = new FileSender(cryptographer, sender, recognizer, () => now);
 		}
 
 		[Test]
@@ -40,7 +38,7 @@ namespace FileSenderRailway
 			var signed = SomeByteArray();
 			PrepareDocument(file, signed, now.AddDays(-daysBeforeNow), format);
 
-			fileSender.SendFiles(new[] { file }, certificate)
+			FileSender.SendFiles(new[] { file }, certificate, sender, recognizer, cryptographer, () => now)
 				.ShouldBeEquivalentTo(new[] { new FileSendResult(file) });
 			A.CallTo(() => sender.Send(A<Document>.That.Matches(d => d.Content == signed)))
 				.MustHaveHappened();
@@ -77,8 +75,8 @@ namespace FileSenderRailway
 
 		private void VerifyErrorOnPrepareFile(FileContent fileContent, X509Certificate x509Certificate)
 		{
-			var res = fileSender
-				.SendFiles(new[] { fileContent }, x509Certificate)
+			var res = FileSender
+				.SendFiles(new[] { fileContent }, x509Certificate, sender, recognizer, cryptographer, () => now)
 				.Single();
 			res.IsSuccess.Should().BeFalse();
 			Approvals.Verify(res.Error);
